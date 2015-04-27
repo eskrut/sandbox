@@ -16,8 +16,9 @@
 
 int main(int argc, char **argv)
 {
-    float numScale = 5.5;
-    std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(100, 1, 1, 30*numScale, 4*numScale, 4*numScale));
+    float numScale = 1.5;
+//    std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(100, 1, 1, 30*numScale, 4*numScale, 4*numScale));
+    std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(1, 1, 1, 1, 1, 1));
     sbfMesh *mesh = mesh_up.get();
     mesh->setMtr(1);
     report("Optimizing node numbering");
@@ -52,14 +53,14 @@ int main(int argc, char **argv)
     for(auto i : listLoad) force(i, 0) = 1.0/listLoad.size();
 
     report("Locking DOFs");
-    for(auto i : listLock) stiff->lockDof(i, 0, 0, force.data(), LockType::APPROXIMATE_LOCK_TYPE);
-    stiff->lockDof(listLock.front(), 0, 0, force.data(), LockType::EXACT_LOCK_TYPE);
-    stiff->lockDof(listLock.front(), 0, 0, force.data(), LockType::EXACT_LOCK_TYPE);
+    for(auto i : listLock) stiff->lockDof(i, 0, 0, force.data(), LockType::EXACT_LOCK_TYPE);
+    stiff->lockDof(listLock.front(), 1, 0, force.data(), LockType::EXACT_LOCK_TYPE);
+    stiff->lockDof(listLock.front(), 2, 0, force.data(), LockType::EXACT_LOCK_TYPE);
 
     {
         displ.null();
         report("Making chol");
-        std::unique_ptr<sbfStiffMatrix> chol_up(stiff->createChol(false));
+        std::unique_ptr<sbfStiffMatrix> chol_up(stiff->createChol());
         sbfStiffMatrix *chol = chol_up.get();
 
         report("Solving");
