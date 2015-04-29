@@ -16,13 +16,13 @@
 
 int main(int argc, char **argv)
 {
-    float numScale = 1.5;
+    float numScale = 4.5;
     std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(1000, 10, 10, 30*numScale, 4*numScale, 4*numScale));
 //    std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(1, 1, 1, 1, 1, 1));
     sbfMesh *mesh = mesh_up.get();
     mesh->setMtr(1);
     report("Optimizing node numbering");
-    mesh->optimizeNodesNumbering();
+    mesh->optimizeNodesNumbering(RenumberOptimizationType::SIMPLE, false);
     report("Num nodes:", mesh->numNodes());
 
     NodesData<> displ("displ", mesh), force("force", mesh);
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
         std::unique_ptr<sbfStiffMatrix> chol_up(stiff->createChol());
         sbfStiffMatrix *chol = chol_up.get();
 
-        report(chol->isValid());
+        if ( !chol->isValid() ) report("Chol factor is not valid");
 
         report("Solving");
         chol->solve_L_LT_u_eq_f(displ.data(), force.data());
@@ -73,22 +73,6 @@ int main(int argc, char **argv)
         double av = 0;
         for(auto i : listLoad)
             av += displ(i, 0);
-        av /= listLoad.size();
-
-        report("Calc: ", av, "\nexp: ", mesh->maxX()*1.0/props->material(0)->propertyTable("elastic module")->curValue()/mesh->maxX()/mesh->maxZ());
-
-    }
-    {
-        displ.null();
-        report("Making chol parallel");
-        std::unique_ptr<sbfStiffMatrix> chol_up(stiff->createCholParallel());
-        sbfStiffMatrix *chol = chol_up.get();
-
-        report("Solving");
-        chol->solve_L_LT_u_eq_f(displ.data(), force.data());
-
-        double av = 0;
-        for(auto i : listLoad) av += displ(i, 0);
         av /= listLoad.size();
 
         report("Calc: ", av, "\nexp: ", mesh->maxX()*1.0/props->material(0)->propertyTable("elastic module")->curValue()/mesh->maxX()/mesh->maxZ());
