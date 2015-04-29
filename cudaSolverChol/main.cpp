@@ -17,8 +17,8 @@
 int main(int argc, char **argv)
 {
     float numScale = 1.5;
-//    std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(100, 1, 1, 30*numScale, 4*numScale, 4*numScale));
-    std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(1, 1, 1, 1, 1, 1));
+    std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(1000, 10, 10, 30*numScale, 4*numScale, 4*numScale));
+//    std::unique_ptr<sbfMesh> mesh_up(sbfMesh::makeBlock(1, 1, 1, 1, 1, 1));
     sbfMesh *mesh = mesh_up.get();
     mesh->setMtr(1);
     report("Optimizing node numbering");
@@ -53,14 +53,35 @@ int main(int argc, char **argv)
     for(auto i : listLoad) force(i, 0) = 1.0/listLoad.size();
 
     report("Locking DOFs");
-    for(auto i : listLock) stiff->lockDof(i, 0, 0, force.data(), LockType::EXACT_LOCK_TYPE);
-    stiff->lockDof(listLock.front(), 1, 0, force.data(), LockType::EXACT_LOCK_TYPE);
-    stiff->lockDof(listLock.front(), 2, 0, force.data(), LockType::EXACT_LOCK_TYPE);
+    for(auto i : listLock) stiff->lockDof(i, 0, 0, force.data(), LockType::APPROXIMATE_LOCK_TYPE);
+    stiff->lockDof(mesh->nodeAt(0, 0, 0), 1, 0, force.data(), LockType::APPROXIMATE_LOCK_TYPE);
+    stiff->lockDof(mesh->nodeAt(0, 0, 0), 2, 0, force.data(), LockType::APPROXIMATE_LOCK_TYPE);
+    stiff->lockDof(mesh->nodeAt(0, mesh->maxY(), 0), 2, 0, force.data(), LockType::APPROXIMATE_LOCK_TYPE);
+    stiff->lockDof(mesh->nodeAt(0, 0, mesh->maxZ()), 1, 0, force.data(), LockType::APPROXIMATE_LOCK_TYPE);
 
     {
         displ.null();
         report("Making chol");
         std::unique_ptr<sbfStiffMatrix> chol_up(stiff->createChol());
+        sbfStiffMatrix *chol = chol_up.get();
+
+        report(chol->isValid());
+
+        report("Solving");
+        chol->solve_L_LT_u_eq_f(displ.data(), force.data());
+
+        double av = 0;
+        for(auto i : listLoad)
+            av += displ(i, 0);
+        av /= listLoad.size();
+
+        report("Calc: ", av, "\nexp: ", mesh->maxX()*1.0/props->material(0)->propertyTable("elastic module")->curValue()/mesh->maxX()/mesh->maxZ());
+
+    }
+    {
+        displ.null();
+        report("Making chol parallel");
+        std::unique_ptr<sbfStiffMatrix> chol_up(stiff->createCholParallel());
         sbfStiffMatrix *chol = chol_up.get();
 
         report("Solving");
@@ -70,7 +91,7 @@ int main(int argc, char **argv)
         for(auto i : listLoad) av += displ(i, 0);
         av /= listLoad.size();
 
-        report("Calc: ", av, "\nexp: ", mesh->maxX()*1.0/props->material(0)->propertyTable("elastic module")->curValue());
+        report("Calc: ", av, "\nexp: ", mesh->maxX()*1.0/props->material(0)->propertyTable("elastic module")->curValue()/mesh->maxX()/mesh->maxZ());
 
     }
 
