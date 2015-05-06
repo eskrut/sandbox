@@ -65,10 +65,30 @@ int main(int argc, char **argv)
         std::unique_ptr<sbfStiffMatrix> chol_up(stiff->createChol());
         sbfStiffMatrix *chol = chol_up.get();
 
-        if ( !chol->isValid() ) report("Chol factor is not valid");
+        if ( !chol->isValid() ) report.error("Chol factor is not valid");
 
         report("Solving");
         chol->solve_L_LT_u_eq_f(displ.data(), force.data());
+
+        double av = 0;
+        for(auto i : listLoad)
+            av += displ(i, 0);
+        av /= listLoad.size();
+
+        report("Calc: ", av, "\nexp: ", mesh->maxX()*1.0/props->material(0)->propertyTable("elastic module")->curValue()/mesh->maxX()/mesh->maxZ());
+
+    }
+
+    {
+        displ.null();
+        report("Making ldlt");
+        std::unique_ptr<sbfStiffMatrix> ldlt_up(stiff->createLDLT());
+        sbfStiffMatrix *ldlt = ldlt_up.get();
+
+        if ( !ldlt->isValid() ) report.error("Chol factor is not valid");
+
+        report("Solving");
+        ldlt->solve_L_D_LT_u_eq_f(displ.data(), force.data());
 
         double av = 0;
         for(auto i : listLoad)
