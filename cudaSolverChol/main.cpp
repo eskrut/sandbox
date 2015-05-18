@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     sbfStiffMatrixBand<3> *stiff = stiff_up.get();
 
     report("Computing stiff");
-    stiff->computeSequantially();
+    stiff->compute();
 
     sbfGroupFilter filtLock, filtLoad;
     filtLock.setCrdXF(mesh->minX()-0.001, mesh->minX()+0.001);
